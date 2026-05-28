@@ -1,0 +1,78 @@
+# ─────────────────────────────────────────────────────────────
+# FILE: .github/workflows/job_agent.yml
+#
+# Posiziona questo file nella cartella:
+#   tuo-progetto/.github/workflows/job_agent.yml
+#
+# CONFIGURAZIONE INIZIALE (una sola volta):
+#   1. Vai su github.com → tuo repository → Settings → Secrets → Actions
+#   2. Aggiungi questi segreti:
+#      - ANTHROPIC_API_KEY   → la tua chiave API Anthropic
+#      - HUNTER_API_KEY      → la tua chiave Hunter.io
+#      - GMAIL_USER          → tua email Gmail
+#      - GMAIL_APP_PASSWORD  → password app Gmail (non la password normale)
+#      - RECIPIENT_EMAIL     → dove vuoi ricevere il report
+# ─────────────────────────────────────────────────────────────
+
+name: Job Agent — Monitoraggio Offerte Giornaliero
+
+on:
+  # Ogni giorno lun-ven alle 07:00 UTC (= 09:00 ora italiana)
+  schedule:
+    - cron: "0 7 * * 1-5"
+
+  # Avvio manuale dal browser GitHub (utile per test)
+  workflow_dispatch:
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30         # sicurezza: si ferma dopo 30 min
+
+    steps:
+
+      # 1. Scarica il codice dal repository
+      - name: Checkout codice
+        uses: actions/checkout@v4
+
+      # 2. Installa Python 3.11
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 3. Cache delle dipendenze (velocizza le esecuzioni successive)
+      - name: Cache dipendenze Python
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      # 4. Installa le librerie Python
+      - name: Installa dipendenze
+        run: pip install -r requirements.txt
+
+      # 5. Installa Playwright e i browser per lo scraping
+      - name: Installa Playwright
+        run: |
+          playwright install chromium
+          playwright install-deps chromium
+
+      # 6. Esegue l'agente con le API key prese dai segreti
+      - name: Esegui agente
+        env:
+          ANTHROPIC_API_KEY:   ${{ secrets.ANTHROPIC_API_KEY }}
+          HUNTER_API_KEY:      ${{ secrets.HUNTER_API_KEY }}
+          GMAIL_USER:          ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD:  ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT_EMAIL:     ${{ secrets.RECIPIENT_EMAIL }}
+        run: python agent.py
+
+      # 7. Salva il report come artefatto scaricabile (30 giorni)
+      - name: Salva report
+        if: always()              # eseguito anche se l'agente ha errori
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ github.run_id }}
+          path: report.json
+          retention-days: 30
