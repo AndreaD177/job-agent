@@ -1,0 +1,10 @@
+# ─────────────────────────────────────────────────────────────
+# FILE: requirements.txt
+# Installa con: pip install -r requirements.txt
+# ─────────────────────────────────────────────────────────────
+
+anthropic>=0.30.0          # Claude API — filtro offerte e redazione email
+playwright>=1.44.0         # scraping siti con JavaScript
+beautifulsoup4>=4.12.0     # parsing HTML
+requests>=2.32.0           # chiamate HTTP semplici
+python-dotenv>=1.0.0       # carica variabili da file .env in locale
